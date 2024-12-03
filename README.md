@@ -15,7 +15,7 @@
 
 # **Dartotsu** 🌟
 
-**Dartotsu** is a complete rewrite of the original [Dantotsu](https://github.com/rebelonion/Dantotsu/) in Flutter, designed as an exclusive [AniList](https://anilist.co/) client.
+**Dartotsu** is a complete rewrite of [Dantotsu](https://github.com/rebelonion/Dantotsu/) in Flutter. Designed as a hybrid client, it supports [AniList](https://anilist.co/) and [MyAnimeList](https://myanimelist.net/), with future plans for Kitsu and Simkl integration.
 > **Note:** This project is currently under development and is not ready for public use.
 
 ## Downloads
