@@ -295,10 +295,10 @@ jobs:
       - name: Check for noPing 
         id: check_noping 
         run: | 
-          if [[ "${{ github.event.head_commit.message }}" == *"[noPing]"* ]]; then 
-            echo "ping_variable=noping" >> $GITHUB_ENV 
-          else 
+          if [[ "${{ github.event.head_commit.message }}" == *"[Ping]"* ]]; then 
             echo "ping_variable=<@&1298926901833895986>" >> $GITHUB_ENV 
+          else 
+            echo "ping_variable=noPing" >> $GITHUB_ENV 
           fi
       - name: Upload APK to Discord and Telegram
         shell: bash
@@ -506,6 +506,7 @@ jobs:
             response=$(curl -sS -f -X POST \
                 "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKKEN}}/sendDocument" \
                 -F "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID}}" \
+                -F "message_thread_id=${{secrets.TELEGRAM_THREAD_ID}}" \
                 -F "document=@last_sha.txt" \
                 -F "caption=New Alpha-Build dropped 🔥
             
@@ -556,18 +557,21 @@ jobs:
           curl -H "Content-Type: application/json" \
                -d "{\"content\": \"${APK_MESSAGE}\n${WINDOWS_MESSAGE}\n${LINUX_MESSAGE}\"}" \
                "${{ secrets.DISCORD_WEBHOOK_URL }}"
-
-        # Send Telegram Message
       - name: Send Telegram Notification
-        uses: appleboy/telegram-action@master
-        with:
-            to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-            token: ${{secrets.TELEGRAM_BOT_TOKKEN}}
-            message: |
-                🎉 *Build Notification* 🎉
-                🔹 **APK**: ${{ env.apk_message}}
-                🔹 **Windows**: ${{ env.windows_message }}
-                🔹 **Linux**: ${{ env.linux_message }}
+        run: |
+            response=$(curl -sS -f -X POST \
+                "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKKEN}}/sendMessage" \
+                -F "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID}}" \
+                -F "message_thread_id=${{secrets.TELEGRAM_THREAD_ID}}" \
+                -F parse_mode="Markdown" \
+                -F disable_notification=true \
+                -F "text=🎉 *Build Notification* 🎉
+              🔹 **APK**: ${{ env.apk_message }}
+              🔹 **Windows**: ${{ env.windows_message }}
+              🔹 **Linux**: ${{ env.linux_message }}")
+
+
+        
 
           
 
