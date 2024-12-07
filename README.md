@@ -15,7 +15,7 @@
 
 # **Dartotsu** 🌟
 
-**Dartotsu** is a complete rewrite of [Dantotsu](https://github.com/rebelonion/Dantotsu/) in Flutter. Designed as a hybrid client, it supports [AniList](https://anilist.co/) and [MyAnimeList](https://myanimelist.net/), with future plans for Kitsu and Simkl integration.
+**Dartotsu** is a complete Flutter-based rewrite of [Dantotsu](https://github.com/rebelonion/Dantotsu), a hybrid tracker for anime, manga, novels, and manhwa. It currently supports [AniList](https://anilist.co/) and [MyAnimeList](https://myanimelist.net/), with plans to integrate Kitsu and Simkl in the future.
 > **Note:** This project is currently under development and is not ready for public use.
 
 ## Downloads
@@ -26,9 +26,9 @@
 </p>
 
 ## Disclaimer
-- The developer of this application is not liable for any misuse or legal issues arising from its use and is not affiliated with any content providers. This application hosts zero content.
-- Dartotsu does not condone piracy.
-- This project is created strictly for educational purposes.
+- Dartotsu is intended for tracking use only by default, does not host any content, and is created strictly for educational purposes.
+- It does not support or promote piracy in any form.
+- For legal concerns, users should contact the relevant content providers directly.
 
 ## Support Us
 <a href='https://buymeacoffee.com/aayush262' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi1.png?v=3' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
