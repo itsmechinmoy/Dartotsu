@@ -16,6 +16,7 @@ abstract class MediaService {
   MediaService() {
     _instances.add(this);
   }
+  get getName => runtimeType.toString().replaceAll('Service', '');
 
   static List<MediaService> get allServices => List.unmodifiable(_instances);
 
@@ -31,10 +32,10 @@ abstract class MediaService {
 
   BaseLoginScreen? loginScreen;
 
-  notImplemented(String name) {
+  Widget notImplemented(String name) {
     return Center(
       child: Text(
-          "$name not implemented on ${runtimeType.toString().replaceAll('Service', '')}"),
+          "$name not implemented on $getName"),
     );
   }
 }

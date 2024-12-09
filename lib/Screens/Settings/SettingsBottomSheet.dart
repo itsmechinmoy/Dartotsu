@@ -8,7 +8,6 @@ import 'package:dantotsu/Widgets/CustomBottomDialog.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
 import 'package:provider/provider.dart';
-
 import '../../Preferences/PrefManager.dart';
 import '../../Services/ServiceSwitcher.dart';
 
@@ -32,7 +31,9 @@ class SettingsBottomSheetState extends State<SettingsBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    var service = Provider.of<MediaServiceProvider>(context,listen: false).currentService.data;
+    var service = Provider.of<MediaServiceProvider>(context, listen: false)
+        .currentService
+        .data;
     return CustomBottomDialog(
       viewList: [
         Padding(
@@ -218,21 +219,20 @@ class SettingsBottomSheetState extends State<SettingsBottomSheet> {
   Widget _buildListTile(
       BuildContext context, String title, IconData icon, Widget open) {
     return ListTile(
-        title: Text(
-          title,
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontFamily: 'Poppins',
+          color: Theme.of(context).colorScheme.onSurface,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
         ),
-        leading: Icon(icon, color: Theme.of(context).primaryColor),
-        onTap: () {
-          Navigator.of(context).pop();
-          navigateToPage(context, open);
-        },);
+      ),
+      leading: Icon(icon, color: Theme.of(context).primaryColor),
+      onTap: () {
+        Navigator.of(context).pop();
+        navigateToPage(context, open);
+      },
+    );
   }
 }
-
-

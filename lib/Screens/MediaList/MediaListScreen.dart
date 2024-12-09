@@ -1,7 +1,7 @@
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
-
 import '../../Services/ServiceSwitcher.dart';
 import 'MediaListTabs.dart';
 import 'MediaListViewModel.dart';
@@ -17,11 +17,12 @@ class MediaListScreen extends StatefulWidget {
 }
 
 class MediaListScreenState extends State<MediaListScreen> {
-  final _viewModel = Get.put(MediaListViewModel());
+  late final MediaListViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
+    _viewModel = Get.put(MediaListViewModel(), tag: widget.anime ? 'anime' : 'manga');
     _viewModel.loadAll(anime: widget.anime, userId: widget.id);
   }
 

@@ -2,7 +2,6 @@ import 'package:dantotsu/Widgets/LoadSvg.dart';
 import 'package:flutter/material.dart';
 import 'package:icons_plus/icons_plus.dart';
 import 'package:provider/provider.dart';
-
 import '../../Functions/Function.dart';
 import '../../Services/ServiceSwitcher.dart';
 

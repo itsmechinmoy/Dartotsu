@@ -1,11 +1,14 @@
+
 import 'package:flutter/cupertino.dart';
 import 'package:fuzzywuzzy/fuzzywuzzy.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../DataClass/Media.dart';
 import '../../../../Preferences/HiveDataClasses/Selected/Selected.dart';
 import '../../../../Preferences/HiveDataClasses/ShowResponse/ShowResponse.dart';
 import '../../../../Preferences/PrefManager.dart';
+import '../../../../Services/ServiceSwitcher.dart';
 import '../../../../Widgets/CustomBottomDialog.dart';
 import '../../../../api/Mangayomi/Eval/dart/model/m_manga.dart';
 import '../../../../api/Mangayomi/Model/Source.dart';
@@ -18,11 +21,13 @@ abstract class BaseParser extends GetxController {
   var source = Rxn<Source>(null);
 
   void saveSelected(int id, Selected data) {
-    PrefManager.setCustomVal("Selected-$id", data);
+    var sourceName = Provider.of<MediaServiceProvider>(Get.context!).currentService.getName;
+    PrefManager.setCustomVal("Selected-$id-$sourceName", data);
   }
 
   Selected loadSelected(Media mediaData) {
-    return PrefManager.getCustomVal("Selected-${mediaData.id}") ?? Selected();
+    var sourceName = Provider.of<MediaServiceProvider>(Get.context!).currentService.getName;
+    return PrefManager.getCustomVal("Selected-${mediaData.id}-$sourceName") ?? Selected();
   }
 
   Future<void> searchMedia(Source source, Media mediaData,
