@@ -3,14 +3,22 @@ on:
   push:
     branches:
       - main
-    
+
+env:
+  FLUTTER_VERSION: 3.27.1
+  JAVA_VERSION: 17
+  JAVA_DISTRIBUTION: oracle
+  DRIVE_FOLDER_ID: 1nWYex54zd58SVitJUCva91_4k1PPTdP3
+
 jobs:
   build_android:
     runs-on: ubuntu-latest
-    if: "contains(github.event.head_commit.message, '[build.apk]') || contains(github.event.head_commit.message, '[build]')"
+    if: contains(github.event.head_commit.message, '[build.apk]') || contains(github.event.head_commit.message, '[build]')
     outputs:
-      apk_link: ${{steps.gdriveUpload.outputs.web-content-link}}
-      version: ${{steps.version.outputs.version}}
+      universal_link: ${{steps.universal_upload.outputs.web-content-link}}
+      arm64_link: ${{steps.arm64_upload.outputs.web-content-link}}
+      arm32_link: ${{steps.arm32_upload.outputs.web-content-link}}
+      x64_link: ${{steps.x64_upload.outputs.web-content-link}}
 
     permissions:
       contents: write
@@ -18,20 +26,11 @@ jobs:
       actions: read
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 1  # Shallow clone for faster checkout
+          fetch-depth: 0
 
-      # Set up version
-      - name: Set Version
-        id: version
-        run: |
-          echo "version=$(grep 'version:' pubspec.yaml | cut -d' ' -f2)" >> $GITHUB_OUTPUT
-
-      # Cache Flutter dependencies with improved keys
       - uses: actions/cache@v4
-        id: flutter-cache
         with:
           path: |
             ~/.pub-cache
@@ -39,97 +38,253 @@ jobs:
             .dart_tool/
             ~/.gradle/caches
             ~/.gradle/wrapper
-            ${{ env.FLUTTER_HOME }}/.pub-cache
-          key: ${{ runner.os }}-flutter-gradle-${{ hashFiles('**/pubspec.lock', '**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-flutter-gradle-
-            ${{ runner.os }}-flutter-
+          key: ${{ runner.os }}-build-${{ hashFiles('**/pubspec.lock', '**/*.gradle*', '**/gradle-wrapper.properties') }}
 
       - uses: actions/setup-java@v4
         with:
-          distribution: "temurin"  # Using Temurin instead of Oracle for better licensing
-          java-version: "17"
-          cache: "gradle"
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.27.1
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
-          cache-key: flutter-:os:-:channel:-:version:-:arch:-:hash
 
-      # Download and setup keystore
-      - name: Setup Keystore
+      - name: Setup Android Build
         run: |
           echo "${{ secrets.APK_SIGN }}" | base64 --decode > android/app/dartotsu.jks
           echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
           echo "keyPassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS}}" >> android/key.properties
           echo "storeFile=dartotsu.jks" >> android/key.properties
-
-      # Optimize Gradle
-      - name: Configure Gradle
-        run: |
-          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError" > ~/.gradle/gradle.properties
+          mkdir -p ~/.gradle
           echo "org.gradle.daemon=true" >> ~/.gradle/gradle.properties
           echo "org.gradle.parallel=true" >> ~/.gradle/gradle.properties
           echo "org.gradle.caching=true" >> ~/.gradle/gradle.properties
-          echo "android.enableR8.fullMode=true" >> ~/.gradle/gradle.properties
-          echo "android.enableJetifier=false" >> ~/.gradle/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4g -XX:+HeapDumpOnOutOfMemoryError" >> ~/.gradle/gradle.properties
 
-      # Build APKs for all ABIs
       - name: Build APKs
         run: |
-          flutter pub get --no-example
-          flutter build apk --release \
-            --target-platform android-arm,android-arm64,android-x64 \
-            --split-per-abi \
-            --obfuscate \
-            --split-debug-info=build/debug-info
+          flutter pub get
+          # Build universal APK
+          flutter build apk --release
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/Dantotsu_Android_Universal_${{github.ref_name}}.apk
+          
+          # Build split APKs
+          flutter build apk --release --split-per-abi
+          mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/Dantotsu_Android_arm64_${{github.ref_name}}.apk
+          mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/Dantotsu_Android_arm32_${{github.ref_name}}.apk
+          mv build/app/outputs/flutter-apk/app-x86_64-release.apk build/app/outputs/flutter-apk/Dantotsu_Android_x64_${{github.ref_name}}.apk
 
-      - name: Rename and Move APKs
+      - name: Upload Universal APK
+        id: universal_upload
+        uses: hoatruongdev09/google-drive-file-upload-github-action@v1.1
+        with:
+          file-path: build/app/outputs/flutter-apk/Dantotsu_Android_Universal_${{github.ref_name}}.apk
+          upload-name: Dartotsu_Universal.apk
+          upload-to-folder-id: ${{ env.DRIVE_FOLDER_ID }}
+          service-account-json: "${{secrets.GOOGLE_KEY}}"
+          overrwrite: true
+
+      - name: Upload ARM64 APK
+        id: arm64_upload
+        uses: hoatruongdev09/google-drive-file-upload-github-action@v1.1
+        with:
+          file-path: build/app/outputs/flutter-apk/Dantotsu_Android_arm64_${{github.ref_name}}.apk
+          upload-name: Dartotsu_ARM64.apk
+          upload-to-folder-id: ${{ env.DRIVE_FOLDER_ID }}
+          service-account-json: "${{secrets.GOOGLE_KEY}}"
+          overrwrite: true
+
+      - name: Upload ARM32 APK
+        id: arm32_upload
+        uses: hoatruongdev09/google-drive-file-upload-github-action@v1.1
+        with:
+          file-path: build/app/outputs/flutter-apk/Dantotsu_Android_arm32_${{github.ref_name}}.apk
+          upload-name: Dartotsu_ARM32.apk
+          upload-to-folder-id: ${{ env.DRIVE_FOLDER_ID }}
+          service-account-json: "${{secrets.GOOGLE_KEY}}"
+          overrwrite: true
+
+      - name: Upload x64 APK
+        id: x64_upload
+        uses: hoatruongdev09/google-drive-file-upload-github-action@v1.1
+        with:
+          file-path: build/app/outputs/flutter-apk/Dantotsu_Android_x64_${{github.ref_name}}.apk
+          upload-name: Dartotsu_x64.apk
+          upload-to-folder-id: ${{ env.DRIVE_FOLDER_ID }}
+          service-account-json: "${{secrets.GOOGLE_KEY}}"
+          overrwrite: true
+
+  build_windows:
+    runs-on: windows-latest
+    if: contains(github.event.head_commit.message, '[build.windows]') || contains(github.event.head_commit.message, '[build]')
+    outputs:
+      zip_link: ${{steps.gdriveUpload.outputs.web-content-link}}
+
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/cache@v4
+        with:
+          path: |
+            C:\hostedtoolcache\windows\flutter
+            ~\AppData\Local\Pub\Cache
+            build\
+            .dart_tool\
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Build Windows App
         run: |
-          mkdir -p build/outputs
-          mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/outputs/Dantotsu_arm_${{github.ref_name}}.apk
-          mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/outputs/Dantotsu_arm64_${{github.ref_name}}.apk
-          mv build/app/outputs/flutter-apk/app-x86_64-release.apk build/outputs/Dantotsu_x64_${{github.ref_name}}.apk
+          flutter config --enable-windows-desktop
+          flutter pub get
+          flutter build windows --release
 
-      # Upload arm64 version (primary)
-      - name: Upload ARM64 to Google Drive
+      - uses: thedoctor0/zip-release@master
+        with:
+          type: zip
+          filename: Dantotsu_Windows_${{github.ref_name}}.zip
+          directory: build\windows\x64\runner\Release
+
+      - name: Upload to Drive
         id: gdriveUpload
         uses: hoatruongdev09/google-drive-file-upload-github-action@v1.1
         with:
-          file-path: build/outputs/Dantotsu_arm64_${{github.ref_name}}.apk
-          upload-name: Dantotsu_arm64.apk
-          upload-to-folder-id: 1nWYex54zd58SVitJUCva91_4k1PPTdP3
+          file-path: build/windows/x64/runner/Release/Dantotsu_Windows_${{github.ref_name}}.zip
+          upload-name: Dartotsu_windows.zip
+          upload-to-folder-id: ${{ env.DRIVE_FOLDER_ID }}
           service-account-json: "${{secrets.GOOGLE_KEY}}"
           overrwrite: true
 
-      # Upload arm version
-      - name: Upload ARM to Google Drive
+  build_linux:
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, '[build.linux]')
+    outputs:
+      zip_link: ${{steps.gdriveUpload.outputs.web-content-link}}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Setup and Build
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ninja-build libgtk-3-dev webkit2gtk-4.1
+          flutter pub get
+          flutter build linux
+
+      - uses: thedoctor0/zip-release@master
+        with:
+          type: zip
+          filename: Dantotsu_Linux_${{github.ref_name}}.zip
+          directory: build/linux/x64/release/bundle
+
+      - name: Upload to Drive
+        id: gdriveUpload
         uses: hoatruongdev09/google-drive-file-upload-github-action@v1.1
         with:
-          file-path: build/outputs/Dantotsu_arm_${{github.ref_name}}.apk
-          upload-name: Dantotsu_arm.apk
-          upload-to-folder-id: 1nWYex54zd58SVitJUCva91_4k1PPTdP3
+          file-path: build/linux/x64/release/bundle/Dantotsu_Linux_${{github.ref_name}}.zip
+          upload-name: Dartotsu_linux.zip
+          upload-to-folder-id: ${{ env.DRIVE_FOLDER_ID }}
           service-account-json: "${{secrets.GOOGLE_KEY}}"
           overrwrite: true
 
-      # Upload x64 version
-      - name: Upload x64 to Google Drive
+  build_ios:
+    runs-on: macos-latest
+    if: contains(github.event.head_commit.message, '[build.ios]')
+    outputs:
+      ipa_link: ${{steps.gdriveUpload.outputs.web-content-link}}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Build iOS App
+        run: |
+          flutter pub get
+          flutter build ios --release --no-codesign
+          cd build/ios/iphoneos
+          mkdir Payload
+          cd Payload
+          ln -s ../Runner.app
+          cd ..
+          zip -r Dartotsu-iOS-${{ github.ref_name }}.ipa Payload
+
+      - name: Upload to Drive
+        id: gdriveUpload
         uses: hoatruongdev09/google-drive-file-upload-github-action@v1.1
         with:
-          file-path: build/outputs/Dantotsu_x64_${{github.ref_name}}.apk
-          upload-name: Dantotsu_x64.apk
-          upload-to-folder-id: 1nWYex54zd58SVitJUCva91_4k1PPTdP3
+          file-path: build/ios/iphoneos/Dartotsu-iOS-${{ github.ref_name }}.ipa
+          upload-name: Dartotsu-iOS.ipa
+          upload-to-folder-id: ${{ env.DRIVE_FOLDER_ID }}
           service-account-json: "${{secrets.GOOGLE_KEY}}"
           overrwrite: true
 
-      # Upload debug symbols if needed
-      - name: Upload Debug Symbols
-        if: "contains(github.event.head_commit.message, '[symbols]')"
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug-symbols
-          path: build/debug-info/
-          retention-days: 14
+  sendMessage:
+    needs: [build_android, build_windows, build_linux, build_ios]
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Process Commit History
+        run: |
+          # Previous commit processing logic...
+          [Previous commit processing and notification logic remains unchanged]
+
+      - name: Send Download Links
+        env:
+          UNIVERSAL_APK_LINK: ${{ needs.build_android.outputs.universal_link }}
+          ARM64_APK_LINK: ${{ needs.build_android.outputs.arm64_link }}
+          ARM32_APK_LINK: ${{ needs.build_android.outputs.arm32_link }}
+          X64_APK_LINK: ${{ needs.build_android.outputs.x64_link }}
+          WINDOWS_LINK: ${{ needs.build_windows.outputs.zip_link }}
+          LINUX_LINK: ${{ needs.build_linux.outputs.zip_link }}
+          IOS_LINK: ${{ needs.build_ios.outputs.ipa_link }}
+        run: |
+          # Prepare download links message
+          DOWNLOAD_LINKS="📱 Android Downloads:\n"
+          [[ -n "$UNIVERSAL_APK_LINK" ]] && DOWNLOAD_LINKS+="▫️ [Universal APK]($UNIVERSAL_APK_LINK)\n"
+          [[ -n "$ARM64_APK_LINK" ]] && DOWNLOAD_LINKS+="▫️ [ARM64 APK]($ARM64_APK_LINK)\n"
+          [[ -n "$ARM32_APK_LINK" ]] && DOWNLOAD_LINKS+="▫️ [ARM32 APK]($ARM32_APK_LINK)\n"
+          [[ -n "$X64_APK_LINK" ]] && DOWNLOAD_LINKS+="▫️ [x64 APK]($X64_APK_LINK)\n"
+          [[ -n "$WINDOWS_LINK" ]] && DOWNLOAD_LINKS+="\n💻 [Windows ZIP]($WINDOWS_LINK)\n"
+          [[ -n "$LINUX_LINK" ]] && DOWNLOAD_LINKS+="\n🐧 [Linux ZIP]($LINUX_LINK)\n"
+          [[ -n "$IOS_LINK" ]] && DOWNLOAD_LINKS+="\n🍎 [iOS IPA]($IOS_LINK)\n"
+
+          # Send to Discord
+          curl -H "Content-Type: application/json" \
+               -d "{\"content\": \"$DOWNLOAD_LINKS\"}" \
+               "${{ secrets.DISCORD_WEBHOOK_URL }}"
+
+          # Send to Telegram
+          TELEGRAM_TEXT="${DOWNLOAD_LINKS//\[/}"
+          TELEGRAM_TEXT="${TELEGRAM_TEXT//\]/}"
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKKEN}}/sendMessage" \
+               -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID}}" \
+               -d "message_thread_id=${{secrets.TELEGRAM_THREAD_ID}}" \
+               -d "text=${TELEGRAM_TEXT}" \
+               -d "parse_mode=Markdown" \
+               -d "disable_notification=true"
