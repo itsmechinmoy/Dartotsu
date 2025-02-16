@@ -239,7 +239,7 @@ abstract class BaseParser extends GetxController {
   _saveShowResponse(Media mediaData, MManga response, Source source,
       {bool selected = false}) {
     status.value =
-        selected ? "Selected : ${response.name}" : "Found : ${response.name}";
+        selected ? getString.selected : ${response.name} : getString.found : ${response.name};
     var show = ShowResponse(
         name: response.name!,
         link: response.link!,
